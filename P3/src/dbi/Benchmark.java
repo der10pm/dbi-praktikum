@@ -4,9 +4,9 @@ import java.util.ArrayList;
 
 public class Benchmark {
 	Connection conn;
-	int n;
+	int n, threadCount;
 	
-	Benchmark(int n) {
+	Benchmark(int n, int threadCount) {
 		try {
 		conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
 		conn.setAutoCommit(false);
@@ -14,6 +14,7 @@ public class Benchmark {
 			e.printStackTrace();
 		}
 		this.n = n;
+		this.threadCount = threadCount;
 	}
 	
 	public void initDB() {
@@ -102,7 +103,6 @@ public class Benchmark {
 	}
 	
 	public void insertAccounts(Connection conn, int n) {
-		int threadCount = 4;
 		int count = n * 100000;
 		if (threadCount == 1) {
 			try {
@@ -162,7 +162,7 @@ public class Benchmark {
 	}
 	
 	public static void main(String[] args) {
-		Benchmark bench = new Benchmark(10);
+		Benchmark bench = new Benchmark(10, 4);
 		
 		bench.clearDB();
 		System.out.println("DB cleared!");
