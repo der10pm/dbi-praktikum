@@ -1,5 +1,6 @@
 package dbi;
 import java.sql.*;
+import java.util.ArrayList;
 
 public class Benchmark {
 	Connection conn;
@@ -10,35 +11,25 @@ public class Benchmark {
 		conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
 		conn.setAutoCommit(false);
 		} catch (SQLException e) {
-			System.out.println(e.getMessage());
+			e.printStackTrace();
 		}
 		this.n = n;
 	}
 	
 	public void initDB() {
 		insertBranches(conn, n);
-//		try {
-//			conn.commit();
-//		} catch (SQLException e) {
-//			System.out.println(e.getMessage());
-//		}
+		try {
+			conn.commit();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 		insertAccounts(conn, n);
 		insertTellers(conn, n);
-//		TellerThread th = new TellerThread(n);
-//		AccountThread accTh = new AccountThread(n);
-//		th.start();
-//		accTh.start();
-//		try {
-//			th.join();
-//			accTh.join();
-//		} catch (InterruptedException e) {
-//			System.out.println(e.getMessage());
-//		}
 		try {
 			conn.commit();
 			conn.close();
 		} catch (SQLException e) {
-			System.out.println(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 	
@@ -46,12 +37,49 @@ public class Benchmark {
 		try {
 			Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
 			PreparedStatement stmt = conn.prepareStatement(
-					"DELETE FROM accounts;" + 
-					"DELETE FROM tellers;" + 
-					"DELETE FROM branches;");
+					"DROP TABLE history;" +
+					"DROP TABLE accounts;" + 
+					"DROP TABLE tellers;" + 
+					"DROP TABLE branches;" +
+					"create table branches\n" + 
+					"( branchid int not null,\n" + 
+					"branchname char(20) not null,\n" + 
+					"balance int not null,\n" + 
+					"address char(72) not null,\n" + 
+					"primary key (branchid) );\n" + 
+					"\n" + 
+					"create table accounts\n" + 
+					"( accid int not null,\n" + 
+					"name char(20) not null,\n" + 
+					"balance int not null,\n" + 
+					"branchid int not null,\n" + 
+					"address char(68) not null,\n" + 
+					"primary key (accid),\n" + 
+					"foreign key (branchid) references branches );\n" + 
+					"\n" + 
+					"create table tellers\n" + 
+					"( tellerid int not null,\n" + 
+					"tellername char(20) not null,\n" + 
+					"balance int not null,\n" + 
+					"branchid int not null,\n" + 
+					"address char(68) not null,\n" + 
+					"primary key (tellerid),\n" + 
+					"foreign key (branchid) references branches );\n" + 
+					"\n" + 
+					"create table history\n" + 
+					"( accid int not null,\n" + 
+					"tellerid int not null,\n" + 
+					"delta int not null,\n" + 
+					"branchid int not null,\n" + 
+					"accbalance int not null,\n" + 
+					"cmmnt char(30) not null,\n" + 
+					"foreign key (accid) references accounts,\n" + 
+					"foreign key (tellerid) references tellers,\n" + 
+					"foreign key (branchid) references branches );"
+					);
 			stmt.execute();
 		} catch (SQLException e) {
-			
+			e.printStackTrace();
 		}
 	}
 	
@@ -69,27 +97,48 @@ public class Benchmark {
 				}
 			stmt.executeBatch();
 		} catch (SQLException e) {
-			System.out.println(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 	
 	public void insertAccounts(Connection conn, int n) {
-		try {
-			PreparedStatement stmtAcc = conn.prepareStatement(
-					"insert into accounts " +
-					"(accid, name, balance, branchid, address) " +
-					"values(?, 'cfQEzCrLSxlnGhlRXKrS', 0, ?, 'BNZh6jqiJuXf2AkggJhCmYOLH4otgKiDqdaOf5olhX57AzQHuGTl39VCEOuYbTbUv59U')"
-					);
-			
-			
-			for(int i = 1; i <= n * 100000; i++) {
-				stmtAcc.setInt(1, i);
-				stmtAcc.setInt(2, (int)(Math.random() * n + 1));
-				stmtAcc.addBatch();
+		int threadCount = 4;
+		int count = n * 100000;
+		if (threadCount == 1) {
+			try {
+				PreparedStatement stmtAcc = conn.prepareStatement(
+						"insert into accounts " +
+						"(accid, name, balance, branchid, address) " +
+						"values(?, 'cfQEzCrLSxlnGhlRXKrS', 0, ?, 'BNZh6jqiJuXf2AkggJhCmYOLH4otgKiDqdaOf5olhX57AzQHuGTl39VCEOuYbTbUv59U')"
+						);
+				
+				
+				for(int i = 1; i <= n * 100000; i++) {
+					stmtAcc.setInt(1, i);
+					stmtAcc.setInt(2, (int)(Math.random() * n + 1));
+					stmtAcc.addBatch();
+				}
+				stmtAcc.executeBatch();
+			} catch (SQLException e) {
+				System.out.println(e.getMessage());
 			}
-			stmtAcc.executeBatch();
-		} catch (SQLException e) {
-			System.out.println(e.getMessage());
+		} else if (threadCount <= count) {
+			int skip = count / threadCount;
+			ArrayList<AccountThread> threads = new ArrayList<>(); 
+			for (int i = 1; i <= count; i += skip) {
+				AccountThread th = new AccountThread(n, i, ((skip + i - 1) > count ? skip - ((skip + i - 1) - count) : skip));
+				th.start();
+				threads.add(th);
+			}
+			for (AccountThread th : threads) {
+				try {
+					th.join();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+		} else {
+			System.out.println("Too many threads for too little records");
 		}
 	}
 	
@@ -108,13 +157,13 @@ public class Benchmark {
 			}		
 			stmtTel.executeBatch();
 		} catch (SQLException e) {
-			System.out.println(e.getMessage());
+			e.printStackTrace();
 		}
 	}
 	
 	public static void main(String[] args) {
 		Benchmark bench = new Benchmark(10);
-
+		
 		bench.clearDB();
 		System.out.println("DB cleared!");
 		long startTime = System.nanoTime();
