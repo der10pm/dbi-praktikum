@@ -6,10 +6,15 @@ public class Benchmark {
 	Connection conn;
 	int n, threadCount;
 	
+	/**
+	 * Hauptklasse für den Benchmark
+	 * @param n Größe der Datenbank
+	 * @param threadCount Anzahl der zu nutzenden Threads für das Erstellen der Accountdaten
+	 */
 	Benchmark(int n, int threadCount) {
 		try {
-		conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
-		conn.setAutoCommit(false);
+			conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
+			conn.setAutoCommit(false);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
@@ -17,16 +22,16 @@ public class Benchmark {
 		this.threadCount = threadCount;
 	}
 	
+	/**
+	 * Erstellen der Datenbank
+	 * Einfügen von Branches, Accounts und Tellers
+	 */
 	public void initDB() {
-		insertBranches(conn, n);
 		try {
+			insertBranches();
 			conn.commit();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-		insertAccounts(conn, n);
-		insertTellers(conn, n);
-		try {
+			insertAccounts();
+			insertTellers();
 			conn.commit();
 			conn.close();
 		} catch (SQLException e) {
@@ -34,9 +39,12 @@ public class Benchmark {
 		}
 	}
 	
-	public void clearDB() {
+	/**
+	 * Leeren der Datenbank
+	 * Tables werden komplett gedroppt und neu erstellt, da dies schneller ist als die Inalte zu löschen
+	 */
+	public void clearDB() throws SQLException {
 		try {
-			Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
 			PreparedStatement stmt = conn.prepareStatement(
 					"DROP TABLE history;" +
 					"DROP TABLE accounts;" + 
@@ -79,50 +87,49 @@ public class Benchmark {
 					"foreign key (branchid) references branches );"
 					);
 			stmt.execute();
+			conn.commit();
 		} catch (SQLException e) {
 			e.printStackTrace();
+			conn.rollback();
 		}
 	}
 	
-	public void insertBranches(Connection conn, int n) {
-		try {
-			PreparedStatement stmt = conn.prepareStatement(
-					"insert into branches" +
-					"(branchid, balance, branchname, address) " +
-					"values(?,0,'cfQEzCrLSxlnGhlRXKrS','4pMOdU3kxqBorIP6wHkerWp2yuGJSWDP7ZCnSYqOlceivFNmynljwOdyNcl3s8Le8zXp3ryz')");
-			
-			
-			for(int i = 1; i <= n; i++) {
-				stmt.setInt(1, i);
-				stmt.addBatch();
-				}
-			stmt.executeBatch();
-		} catch (SQLException e) {
-			e.printStackTrace();
+	/**
+	 * n Branches werden eingefügt
+	 */
+	public void insertBranches() throws SQLException {
+		PreparedStatement stmt = conn.prepareStatement(
+				"insert into branches" +
+				"(branchid, balance, branchname, address) " +
+				"values(?,0,'cfQEzCrLSxlnGhlRXKrS','4pMOdU3kxqBorIP6wHkerWp2yuGJSWDP7ZCnSYqOlceivFNmynljwOdyNcl3s8Le8zXp3ryz')");
+		
+		
+		for(int i = 1; i <= n; i++) {
+			stmt.setInt(1, i);
+			stmt.addBatch();
 		}
+		stmt.executeBatch();
 	}
 	
-	public void insertAccounts(Connection conn, int n) {
+	/**
+	 * n * 100000 Accounts werden eingefügt, dazu werden mehrere Threads verwendet um die Last aufzuteilen
+	 */
+	public void insertAccounts() throws SQLException {
 		int count = n * 100000;
-		if (threadCount == 1) {
-			try {
-				PreparedStatement stmtAcc = conn.prepareStatement(
-						"insert into accounts " +
-						"(accid, name, balance, branchid, address) " +
-						"values(?, 'cfQEzCrLSxlnGhlRXKrS', 0, ?, 'BNZh6jqiJuXf2AkggJhCmYOLH4otgKiDqdaOf5olhX57AzQHuGTl39VCEOuYbTbUv59U')"
-						);
-				
-				
-				for(int i = 1; i <= n * 100000; i++) {
-					stmtAcc.setInt(1, i);
-					stmtAcc.setInt(2, (int)(Math.random() * n + 1));
-					stmtAcc.addBatch();
-				}
-				stmtAcc.executeBatch();
-			} catch (SQLException e) {
-				System.out.println(e.getMessage());
+		if (threadCount == 1) {					// Wenn nur 1 Thread genutzt werden soll, wird der Hauptthread verwendet
+			PreparedStatement stmtAcc = conn.prepareStatement(
+					"insert into accounts " +
+					"(accid, name, balance, branchid, address) " +
+					"values(?, 'cfQEzCrLSxlnGhlRXKrS', 0, ?, 'BNZh6jqiJuXf2AkggJhCmYOLH4otgKiDqdaOf5olhX57AzQHuGTl39VCEOuYbTbUv59U')"
+					);
+			
+			for(int i = 1; i <= n * 100000; i++) {
+				stmtAcc.setInt(1, i);
+				stmtAcc.setInt(2, (int)(Math.random() * n + 1));
+				stmtAcc.addBatch();
 			}
-		} else if (threadCount <= count) {
+			stmtAcc.executeBatch();
+		} else if (threadCount <= count) {		// Bei mehreren Threads wird die Last aufgeteilt und alle Threads ausgeführt
 			int skip = count / threadCount;
 			ArrayList<AccountThread> threads = new ArrayList<>(); 
 			for (int i = 1; i <= count; i += skip) {
@@ -130,11 +137,13 @@ public class Benchmark {
 				th.start();
 				threads.add(th);
 			}
+			// Warten auf die Threads
 			for (AccountThread th : threads) {
 				try {
 					th.join();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
+					throw new SQLException(e.getCause());
 				}
 			}
 		} else {
@@ -142,30 +151,38 @@ public class Benchmark {
 		}
 	}
 	
-	public void insertTellers(Connection conn, int n) {
-		try {
-			PreparedStatement stmtTel = conn.prepareStatement(
-					"insert into tellers " +
-					"(tellerid, tellername, balance, branchid, address) " +
-					"values(?, 'cfQEzCrLSxlnGhlRXKrS', 0, ?, 'BNZh6jqiJuXf2AkggJhCmYOLH4otgKiDqdaOf5olhX57AzQHuGTl39VCEOuYbTbUv59U') "
-					);
-			
-			for(int i = 1; i <= n * 10; i++) {
-				stmtTel.setInt(1, i);
-				stmtTel.setInt(2, (int)(Math.random() * n + 1));
-				stmtTel.addBatch();
-			}		
-			stmtTel.executeBatch();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
+	/**
+	 * Erstellen der Daten in der Teller Tabelle
+	 */
+	public void insertTellers() throws SQLException {
+		PreparedStatement stmtTel = conn.prepareStatement(
+				"insert into tellers " +
+				"(tellerid, tellername, balance, branchid, address) " +
+				"values(?, 'cfQEzCrLSxlnGhlRXKrS', 0, ?, 'BNZh6jqiJuXf2AkggJhCmYOLH4otgKiDqdaOf5olhX57AzQHuGTl39VCEOuYbTbUv59U') "
+				);
+		
+		for(int i = 1; i <= n * 10; i++) {
+			stmtTel.setInt(1, i);
+			stmtTel.setInt(2, (int)(Math.random() * n + 1));
+			stmtTel.addBatch();
+		}		
+		stmtTel.executeBatch();
 	}
 	
+	/**
+	 * Main Methode
+	 * @param args ungenutzt
+	 */
 	public static void main(String[] args) {
 		Benchmark bench = new Benchmark(10, 4);
 		
+		try {
 		bench.clearDB();
 		System.out.println("DB cleared!");
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return;
+		}
 		long startTime = System.nanoTime();
 		bench.initDB();
 		long estimatedTime = System.nanoTime() - startTime;

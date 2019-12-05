@@ -7,12 +7,18 @@ import java.sql.SQLException;
 
 public class AccountThread extends Thread {
 	private Connection conn;
-	private int n, skip, take;
+	private int n, start, count;
 	
-	AccountThread(int n, int skip, int take) {
+	/**
+	 * Thread zum erstellen der Accountdaten mit eigener Connection
+	 * @param n Größe der Datenbank (Anzahl der Branches)
+	 * @param start Erster Eintrag dieses Threads
+	 * @param count Anzahl der zu erstellenden Einträge
+	 */
+	AccountThread(int n, int start, int count) {
 		this.n = n;
-		this.skip = skip;
-		this.take = take;
+		this.start = start;
+		this.count = count;
 		try {
 			conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
 			conn.setAutoCommit(false);
@@ -21,8 +27,12 @@ public class AccountThread extends Thread {
 		}
 	}
 	
+	/**
+	 * Methode wird beim Start des Threads ausgeführt
+	 * Erstellt von strat ausgehend (start + count) Einträge in der Accountdatenbank
+	 */
 	public void run() {
-		System.out.println("Inserting accounts " + skip + " bis " + (skip + take - 1));
+		System.out.println("Inserting accounts " + start + " bis " + (start + count - 1));
 		try {
 			PreparedStatement stmtAcc = conn.prepareStatement(
 					"insert into accounts " +
@@ -31,7 +41,7 @@ public class AccountThread extends Thread {
 					);
 			
 			long startT = System.currentTimeMillis();
-			for(int i = skip; i < skip + take; i++) {
+			for(int i = start; i < start + count; i++) {
 				stmtAcc.setInt(1, i);
 				stmtAcc.setInt(2, (int)(Math.random() * n + 1));
 				stmtAcc.addBatch();
