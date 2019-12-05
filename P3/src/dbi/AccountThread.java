@@ -11,16 +11,17 @@ public class AccountThread extends Thread {
 	
 	/**
 	 * Thread zum erstellen der Accountdaten mit eigener Connection
+	 * @param connStrg ConnectionString
 	 * @param n Größe der Datenbank (Anzahl der Branches)
 	 * @param start Erster Eintrag dieses Threads
 	 * @param count Anzahl der zu erstellenden Einträge
 	 */
-	AccountThread(int n, int start, int count) {
+	AccountThread(String connStrg, int n, int start, int count) {
 		this.n = n;
 		this.start = start;
 		this.count = count;
 		try {
-			conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
+			conn = DriverManager.getConnection(connStrg, "postgres", "daten1");
 			conn.setAutoCommit(false);
 		} catch(SQLException e) {
 			e.printStackTrace();

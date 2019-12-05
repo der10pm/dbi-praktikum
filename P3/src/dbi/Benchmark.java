@@ -5,21 +5,24 @@ import java.util.ArrayList;
 public class Benchmark {
 	Connection conn;
 	int n, threadCount;
+	String connStrg;
 	
 	/**
 	 * Hauptklasse für den Benchmark
 	 * @param n Größe der Datenbank
 	 * @param threadCount Anzahl der zu nutzenden Threads für das Erstellen der Accountdaten
+	 * @param connStrg ConnectionString
 	 */
-	Benchmark(int n, int threadCount) {
+	Benchmark(int n, int threadCount, String connStrg) {
 		try {
-			conn = DriverManager.getConnection("jdbc:postgresql://localhost/benchmark", "postgres", "daten1");
+			conn = DriverManager.getConnection(connStrg, "postgres", "daten1");
 			conn.setAutoCommit(false);
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 		this.n = n;
 		this.threadCount = threadCount;
+		this.connStrg = connStrg;
 	}
 	
 	/**
@@ -133,7 +136,7 @@ public class Benchmark {
 			int skip = count / threadCount;
 			ArrayList<AccountThread> threads = new ArrayList<>(); 
 			for (int i = 1; i <= count; i += skip) {
-				AccountThread th = new AccountThread(n, i, ((skip + i - 1) > count ? skip - ((skip + i - 1) - count) : skip));
+				AccountThread th = new AccountThread("jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true", n, i, ((skip + i - 1) > count ? skip - ((skip + i - 1) - count) : skip));
 				th.start();
 				threads.add(th);
 			}
@@ -174,7 +177,7 @@ public class Benchmark {
 	 * @param args ungenutzt
 	 */
 	public static void main(String[] args) {
-		Benchmark bench = new Benchmark(10, 4);
+		Benchmark bench = new Benchmark(50, 10, "jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true");
 		
 		try {
 		bench.clearDB();
