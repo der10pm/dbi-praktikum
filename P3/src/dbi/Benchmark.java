@@ -38,6 +38,24 @@ public class Benchmark {
 		}
 	}
 	
+	public void clearHistory() throws SQLException {
+		PreparedStatement stmt = conn.prepareStatement(
+				"DROP TABLE history;" +
+				"create table history\n" + 
+				"( accid int not null,\n" + 
+				"tellerid int not null,\n" + 
+				"delta int not null,\n" + 
+				"branchid int not null,\n" + 
+				"accbalance int not null,\n" + 
+				"cmmnt char(30) not null,\n" + 
+				"foreign key (accid) references accounts,\n" + 
+				"foreign key (tellerid) references tellers,\n" + 
+				"foreign key (branchid) references branches );"
+				);
+		stmt.execute();
+		conn.commit();
+	}
+	
 	/**
 	 * Leeren der Datenbank
 	 * Tables werden komplett gedroppt und neu erstellt, da dies schneller ist als die Inalte zu löschen
@@ -175,35 +193,23 @@ public class Benchmark {
 	public static void main(String[] args) {
 		
 		try {
-//			Benchmark bench = new Benchmark(100, 10, "jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
+			Benchmark bench = new Benchmark(100, 10, "jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
 //			bench.clearDB();
 //			System.out.println("DB cleared!");
 //			long startTime = System.nanoTime();
 //			bench.initDB();
 //			long estimatedTime = System.nanoTime() - startTime;
 //			System.out.println("Fertig nach " + estimatedTime/1000000 + " ms");
-			TX transactions = new TX("jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
-			transactions.clearHistory();
-			long startTime = System.currentTimeMillis();
-			long count = 0;
-			while ((System.currentTimeMillis() - startTime) < 60000) {
-				int random = (int) Math.random() * 20;
-				if (random < 7) {
-					transactions.selectAccountBalance(((int) Math.random() * 10000000) + 1);
-				} else if (random >= 7 && random < 17) {
-					transactions.insertMoney(
-							((int) Math.random() * 10000000) + 1,
-							((int) Math.random() * 1000) + 1,
-							((int) Math.random() * 100) + 1,
-							((int) Math.random() * 10000) + 1);
-				} else {
-					transactions.analyse(((int) Math.random() * 10000) + 1);
-				}
-				if ((System.currentTimeMillis() - startTime) > 24000 && (System.currentTimeMillis() - startTime) < 54000)
-					count++;
-				Thread.sleep(50);
+			bench.clearHistory();
+			ArrayList<Thread> threads = new ArrayList<>();
+			for (int i = 0; i < 5; i++) {
+				TX transactions = new TX("jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
+				threads.add(transactions);
+				transactions.start();
 			}
-			System.out.print("Count: " + count + ", Durchschnitt: " + count / 5D);
+			for (Thread th : threads) {
+				th.join();
+			}
 //			transactions.insertMoney(1, 1, 1, 200);
 //			transactions.insertMoney(2, 2, 2, 200);
 //			System.out.println(transactions.selectAccountBalance(1));

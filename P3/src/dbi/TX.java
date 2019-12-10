@@ -2,11 +2,12 @@ package dbi;
 
 import java.sql.*;
 
-public class TX {
+public class TX extends Thread {
 	Connection conn;
 	
 	public TX(String connStrg) throws SQLException {
 		conn = DriverManager.getConnection(connStrg, "postgres", "daten1");
+		conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
 		conn.setAutoCommit(false);
 	}
 	
@@ -55,21 +56,31 @@ public class TX {
 		return rs.getInt("anzahl");
 	}
 	
-	public void clearHistory() throws SQLException {
-		PreparedStatement stmt = conn.prepareStatement(
-				"DROP TABLE history;" +
-				"create table history\n" + 
-				"( accid int not null,\n" + 
-				"tellerid int not null,\n" + 
-				"delta int not null,\n" + 
-				"branchid int not null,\n" + 
-				"accbalance int not null,\n" + 
-				"cmmnt char(30) not null,\n" + 
-				"foreign key (accid) references accounts,\n" + 
-				"foreign key (tellerid) references tellers,\n" + 
-				"foreign key (branchid) references branches );"
-				);
-		stmt.execute();
-		conn.commit();
+	public void run() {
+		System.out.println("Thread gestartet!");
+		try {
+			long startTime = System.currentTimeMillis();
+			long count = 0;
+			while ((System.currentTimeMillis() - startTime) < 60000) {
+				int random = (int) Math.random() * 20;
+				if (random < 7) {
+					selectAccountBalance(((int) Math.random() * 10000000) + 1);
+				} else if (random >= 7 && random < 17) {
+					insertMoney(
+							((int) Math.random() * 10000000) + 1,
+							((int) Math.random() * 1000) + 1,
+							((int) Math.random() * 100) + 1,
+							((int) Math.random() * 10000) + 1);
+				} else {
+					analyse(((int) Math.random() * 10000) + 1);
+				}
+				if ((System.currentTimeMillis() - startTime) > 24000 && (System.currentTimeMillis() - startTime) < 54000)
+					count++;
+				Thread.sleep(50);
+			}
+			System.out.println("Count: " + count + ", Durchschnitt: " + count / 30D);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
