@@ -13,13 +13,9 @@ public class Benchmark {
 	 * @param threadCount Anzahl der zu nutzenden Threads für das Erstellen der Accountdaten
 	 * @param connStrg ConnectionString
 	 */
-	Benchmark(int n, int threadCount, String connStrg) {
-		try {
-			conn = DriverManager.getConnection(connStrg, "postgres", "daten1");
-			conn.setAutoCommit(false);
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
+	Benchmark(int n, int threadCount, String connStrg) throws SQLException {
+		conn = DriverManager.getConnection(connStrg, "postgres", "daten1");
+		conn.setAutoCommit(false);
 		this.n = n;
 		this.threadCount = threadCount;
 		this.connStrg = connStrg;
@@ -136,7 +132,7 @@ public class Benchmark {
 			int skip = count / threadCount;
 			ArrayList<AccountThread> threads = new ArrayList<>(); 
 			for (int i = 1; i <= count; i += skip) {
-				AccountThread th = new AccountThread("jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true", n, i, ((skip + i - 1) > count ? skip - ((skip + i - 1) - count) : skip));
+				AccountThread th = new AccountThread(connStrg, n, i, ((skip + i - 1) > count ? skip - ((skip + i - 1) - count) : skip));
 				th.start();
 				threads.add(th);
 			}
@@ -174,21 +170,21 @@ public class Benchmark {
 	
 	/**
 	 * Main Methode
-	 * @param args ungenutzt
+	 * @param args
 	 */
 	public static void main(String[] args) {
-		Benchmark bench = new Benchmark(50, 10, "jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true");
 		
 		try {
+		Benchmark bench = new Benchmark(10, 10, "jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
 		bench.clearDB();
 		System.out.println("DB cleared!");
-		} catch (SQLException e) {
-			e.printStackTrace();
-			return;
-		}
 		long startTime = System.nanoTime();
 		bench.initDB();
 		long estimatedTime = System.nanoTime() - startTime;
 		System.out.println("Fertig nach " + estimatedTime/1000000 + " ms");
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return;
+		}		
 	}
 }
