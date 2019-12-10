@@ -175,16 +175,44 @@ public class Benchmark {
 	public static void main(String[] args) {
 		
 		try {
-		Benchmark bench = new Benchmark(10, 10, "jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
-		bench.clearDB();
-		System.out.println("DB cleared!");
-		long startTime = System.nanoTime();
-		bench.initDB();
-		long estimatedTime = System.nanoTime() - startTime;
-		System.out.println("Fertig nach " + estimatedTime/1000000 + " ms");
+//			Benchmark bench = new Benchmark(100, 10, "jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
+//			bench.clearDB();
+//			System.out.println("DB cleared!");
+//			long startTime = System.nanoTime();
+//			bench.initDB();
+//			long estimatedTime = System.nanoTime() - startTime;
+//			System.out.println("Fertig nach " + estimatedTime/1000000 + " ms");
+			TX transactions = new TX("jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
+			transactions.clearHistory();
+			long startTime = System.currentTimeMillis();
+			long count = 0;
+			while ((System.currentTimeMillis() - startTime) < 60000) {
+				int random = (int) Math.random() * 20;
+				if (random < 7) {
+					transactions.selectAccountBalance(((int) Math.random() * 10000000) + 1);
+				} else if (random >= 7 && random < 17) {
+					transactions.insertMoney(
+							((int) Math.random() * 10000000) + 1,
+							((int) Math.random() * 1000) + 1,
+							((int) Math.random() * 100) + 1,
+							((int) Math.random() * 10000) + 1);
+				} else {
+					transactions.analyse(((int) Math.random() * 10000) + 1);
+				}
+				if ((System.currentTimeMillis() - startTime) > 24000 && (System.currentTimeMillis() - startTime) < 54000)
+					count++;
+				Thread.sleep(50);
+			}
+			System.out.print("Count: " + count + ", Durchschnitt: " + count / 5D);
+//			transactions.insertMoney(1, 1, 1, 200);
+//			transactions.insertMoney(2, 2, 2, 200);
+//			System.out.println(transactions.selectAccountBalance(1));
+//			System.out.println(transactions.analyse(200));
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return;
-		}		
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
