@@ -12,7 +12,7 @@ public class TX extends Thread {
 	}
 	
 	public int selectAccountBalance(int accId) throws SQLException {
-		int trys = 0;
+		long startTime = System.currentTimeMillis();
 		while (true) {
 			try {
 				conn.endRequest();
@@ -22,53 +22,40 @@ public class TX extends Thread {
 				ResultSet rs = stmt.executeQuery();
 				rs.next();
 				conn.endRequest();
+				System.out.println("select: \t" + (System.currentTimeMillis() - startTime));
 				return rs.getInt("balance");
 			} catch (Exception e) {
-				System.out.println("retry selectAccountBalance: " + ++trys);
 				conn.rollback();
 			}
 		}
 	}
 
 	public void insertMoney(int accId, int tellerId, int branchId, int delta) throws SQLException {
-		int trys = 0;
+		long startTime = System.currentTimeMillis();
 		while (true) {
 			try {
 				conn.endRequest();
 				conn.beginRequest();
-				PreparedStatement stmt = conn.prepareStatement(
-						"UPDATE accounts SET balance=balance+? WHERE accId=?;"
-						+ "UPDATE tellers SET balance=balance+? WHERE tellerId=?;"
-						+ "UPDATE branches SET balance=balance+? WHERE branchId=?;"
-						+ "INSERT INTO history"
-						+ "(accId, tellerId, delta, branchId, accBalance, cmmnt)"
-						+ "VALUES"
-						+ "(?, ?, ?, ?, (SELECT balance FROM accounts WHERE accId=?), ?)");
-				stmt.setInt(1, delta);
-				stmt.setInt(2, accId);
-				stmt.setInt(3, delta);
-				stmt.setInt(4, tellerId);
-				stmt.setInt(5, delta);
-				stmt.setInt(6, branchId);
-				stmt.setInt(7, accId);
-				stmt.setInt(8, tellerId);
-				stmt.setInt(9, delta);
-				stmt.setInt(10, branchId);
-				stmt.setInt(11, accId);
-				stmt.setString(12, "abcdefghijklmnopqrstuvwxyzabcd");
+				CallableStatement stmt = conn.prepareCall(
+						"call insert_transaction(?, ?, ?, ?, ?)");
+				stmt.setInt(1, accId);
+				stmt.setInt(2, branchId);
+				stmt.setInt(3, tellerId);
+				stmt.setInt(4, delta);
+				stmt.setString(5, "abcdefghijklmnopqrstuvwxyzabcd");
 				stmt.execute();
 				conn.commit();
 				conn.endRequest();
+				System.out.println("insert: \t" + (System.currentTimeMillis() - startTime));
 				return;
 			} catch (Exception e) {
-				System.out.println("rolling back insert:" + ++trys);
 				conn.rollback();
 			}
 		}
 	}
 	
 	public int analyse(int delta) throws SQLException {
-		int trys = 0;
+		long startTime = System.currentTimeMillis();
 		while (true) {
 			try {
 				conn.endRequest();
@@ -78,9 +65,9 @@ public class TX extends Thread {
 				ResultSet rs = stmt.executeQuery();
 				rs.next();
 				conn.endRequest();
+				System.out.println("analyse: \t" + (System.currentTimeMillis() - startTime));
 				return rs.getInt("anzahl");
 			} catch (Exception e) {
-				System.out.println("retry analyse: " + ++trys);
 				conn.rollback();
 			}
 		}

@@ -193,7 +193,7 @@ public class Benchmark {
 	public static void main(String[] args) {
 		
 		try {
-			Benchmark bench = new Benchmark(100, 10, "jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
+			Benchmark bench = new Benchmark(100, 10, "jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true");
 //			bench.clearDB();
 //			System.out.println("DB cleared!");
 //			long startTime = System.nanoTime();
@@ -203,7 +203,7 @@ public class Benchmark {
 			bench.clearHistory();
 			ArrayList<Thread> threads = new ArrayList<>();
 			for (int i = 0; i < 5; i++) {
-				TX transactions = new TX("jdbc:postgresql://localhost/benchmark?reWriteBatchedInserts=true");
+				TX transactions = new TX("jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true");
 				threads.add(transactions);
 				transactions.start();
 			}
