@@ -33,3 +33,21 @@ cmmnt char(30) not null,
 foreign key (accid) references accounts,
 foreign key (tellerid) references tellers,
 foreign key (branchid) references branches );
+
+CREATE OR REPLACE PROCEDURE insert_transaction(
+	pAccId integer, 
+	pBranchId integer, 
+	pTellerId integer, 
+	pDelta integer,
+	pCmmnt char(30)					   
+	)
+LANGUAGE SQL
+AS $$
+UPDATE accounts SET balance=balance+pDelta WHERE accId=pAccId;
+UPDATE tellers SET balance=balance+pDelta WHERE tellerId=pTellerId;
+UPDATE branches SET balance=balance+pDelta WHERE branchId=pBranchId;
+INSERT INTO history
+	(accId, tellerId, delta, branchId, accBalance, cmmnt)
+VALUES
+	(pAccId, pTellerId, pDelta, pBranchId, (SELECT balance FROM accounts WHERE accId=pAccId), pCmmnt);
+$$;
