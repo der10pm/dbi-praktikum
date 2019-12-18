@@ -21,6 +21,7 @@ public class TX extends Thread {
 				stmt.setInt(1, accId);
 				ResultSet rs = stmt.executeQuery();
 				rs.next();
+				conn.commit();
 				conn.endRequest();
 				System.out.println("select: \t" + (System.currentTimeMillis() - startTime));
 				return rs.getInt("balance");
@@ -64,6 +65,7 @@ public class TX extends Thread {
 				stmt.setInt(1, delta);
 				ResultSet rs = stmt.executeQuery();
 				rs.next();
+				conn.commit();
 				conn.endRequest();
 				System.out.println("analyse: \t" + (System.currentTimeMillis() - startTime));
 				return rs.getInt("anzahl");
