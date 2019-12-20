@@ -38,24 +38,6 @@ public class Benchmark {
 		}
 	}
 	
-	public void clearHistory() throws SQLException {
-		PreparedStatement stmt = conn.prepareStatement(
-				"DROP TABLE history;" +
-				"create table history\n" + 
-				"( accid int not null,\n" + 
-				"tellerid int not null,\n" + 
-				"delta int not null,\n" + 
-				"branchid int not null,\n" + 
-				"accbalance int not null,\n" + 
-				"cmmnt char(30) not null,\n" + 
-				"foreign key (accid) references accounts,\n" + 
-				"foreign key (tellerid) references tellers,\n" + 
-				"foreign key (branchid) references branches );"
-				);
-		stmt.execute();
-		conn.commit();
-	}
-	
 	/**
 	 * Leeren der Datenbank
 	 * Tables werden komplett gedroppt und neu erstellt, da dies schneller ist als die Inalte zu löschen
@@ -194,26 +176,12 @@ public class Benchmark {
 		
 		try {
 			Benchmark bench = new Benchmark(100, 10, "jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true");
-//			bench.clearDB();
-//			System.out.println("DB cleared!");
-//			long startTime = System.nanoTime();
-//			bench.initDB();
-//			long estimatedTime = System.nanoTime() - startTime;
-//			System.out.println("Fertig nach " + estimatedTime/1000000 + " ms");
-			bench.clearHistory();
-			ArrayList<Thread> threads = new ArrayList<>();
-			for (int i = 0; i < 5; i++) {
-				TX transactions = new TX("jdbc:postgresql://192.168.122.9:5432/benchmark?reWriteBatchedInserts=true");
-				threads.add(transactions);
-				transactions.start();
-			}
-			for (Thread th : threads) {
-				th.join();
-			}
-//			transactions.insertMoney(1, 1, 1, 200);
-//			transactions.insertMoney(2, 2, 2, 200);
-//			System.out.println(transactions.selectAccountBalance(1));
-//			System.out.println(transactions.analyse(200));
+			bench.clearDB();
+			System.out.println("DB cleared!");
+			long startTime = System.nanoTime();
+			bench.initDB();
+			long estimatedTime = System.nanoTime() - startTime;
+			System.out.println("Fertig nach " + estimatedTime/1000000 + " ms");
 		} catch (SQLException e) {
 			e.printStackTrace();
 			return;
